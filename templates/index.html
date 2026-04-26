@@ -1,0 +1,176 @@
+{% extends "layout.html" %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    <a href="{{ url_for('dashboard') }}" style="color: var(--primary-green); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px;">
+        <i class="fas fa-arrow-left"></i> Voltar ao Painel
+    </a>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 20px; margin-bottom: 30px;">
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                <small style="color: #888; text-transform: uppercase;">Em Cultivo</small>
+                <span style="display: block; font-size: 1.8rem; font-weight: bold; color: var(--dark-bg);">{{ stats.total_ativas }}</span>
+            </div>
+            <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
+                <small style="color: #888; text-transform: uppercase;">Ciclo Médio</small>
+                <span style="display: block; font-size: 1.8rem; font-weight: bold; color: var(--dark-bg);">{{ stats.tempo_medio }}d</span>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #eee; display: flex; align-items: center; justify-content: center;">
+            <canvas id="varietyChart" style="max-height: 140px;"></canvas>
+        </div>
+
+        <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #eee; border-top: 4px solid #3498DB;">
+            <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #2C3E50;"><i class="fas fa-tint"></i> Consumo Hídrico (IoT)</h3>
+            {% if not labels_h2o %}
+                <div style="height: 100px; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 0.8rem; border: 1px dashed #eee;">Aguardando sensores...</div>
+            {% else %}
+                <canvas id="waterChart" style="max-height: 120px;"></canvas>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; margin-bottom: 30px; border-top: 4px solid var(--primary-green);">
+        <h3 style="margin: 0 0 15px 0; font-size: 1rem; color: #444;"><i class="fas fa-plus-circle"></i> Registrar Novo Plantio</h3>
+        <form action="/add_hortalica/{{ fazenda.id }}" method="POST" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 2; min-width: 200px;">
+                <label style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 5px;">Hortaliça</label>
+                <input type="text" name="nome" placeholder="Ex: Alface" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 5px;">Data</label>
+                <input type="date" name="data_plantio" required style="width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="flex: 1; min-width: 100px;">
+                <label style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 5px;">Ciclo (Dias)</label>
+                <input type="number" name="ciclo_estimado" placeholder="Ex: 45" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 25px;">Cadastrar</button>
+        </form>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+        <h3 style="margin: 0; color: var(--dark-bg); font-size: 1.1rem;">Controle de Cultivo</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="/exportar_csv/{{ fazenda.id }}" class="btn" style="background: #f0f4f1; color: var(--primary-green); border: 1px solid #d1dbd3; font-size: 0.75rem; padding: 5px 12px;"><i class="fas fa-file-export"></i> CSV</a>
+            <div style="background: #eee; padding: 3px; border-radius: 8px; display: flex; gap: 2px;">
+                <a href="?filtro=Todos" style="padding: 5px 12px; font-size: 0.7rem; text-decoration: none; border-radius: 5px; {{ 'background: white; color: var(--primary-green); box-shadow: 0 2px 4px rgba(0,0,0,0.1);' if stats.filtro_atual == 'Todos' else 'color: #888;' }}">Todos</a>
+                <a href="?filtro=Crescendo" style="padding: 5px 12px; font-size: 0.7rem; text-decoration: none; border-radius: 5px; {{ 'background: white; color: var(--primary-green);' if stats.filtro_atual == 'Crescendo' else 'color: #888;' }}">Em Cultivo</a>
+                <a href="?filtro=Colhido" style="padding: 5px 12px; font-size: 0.7rem; text-decoration: none; border-radius: 5px; {{ 'background: white; color: var(--primary-green);' if stats.filtro_atual == 'Colhido' else 'color: #888;' }}">Colhidos</a>
+            </div>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; background: #f8faf8;">
+                <th style="padding: 15px; color: #666; font-size: 0.85rem; border-bottom: 2px solid #eee;">Hortaliça</th>
+                <th style="padding: 15px; color: #666; font-size: 0.85rem; border-bottom: 2px solid #eee;">Plantio</th>
+                <th style="padding: 15px; color: #666; font-size: 0.85rem; border-bottom: 2px solid #eee;">Idade / Previsão</th>
+                <th style="padding: 15px; color: #666; font-size: 0.85rem; border-bottom: 2px solid #eee;">Status</th>
+                <th style="padding: 15px; text-align: center; color: #666; font-size: 0.85rem; border-bottom: 2px solid #eee;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in hortalicas %}
+            {% set dias = h.data_plantio | dias_cultivo %}
+            
+            {% set bg_color = "transparent" %}
+            {% if h.status != 'Colhido' and h.ciclo_estimado > 0 %}
+                {% if h.atrasada %}
+                    {% set bg_color = "#fff5f5" %} {% elif h.dias_restantes <= 3 %}
+                    {% set bg_color = "#fffdf0" %} {% endif %}
+            {% endif %}
+
+            <tr style="background-color: {{ bg_color }}; transition: 0.3s;">
+                <td style="padding: 15px; border-bottom: 1px solid #eee;"><strong>{{ h.nome }}</strong></td>
+                <td style="padding: 15px; border-bottom: 1px solid #eee; color: #666;">{{ h.data_plantio }}</td>
+                <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                    {% if h.status != 'Colhido' %}
+                        <b style="color: var(--primary-green);">{{ dias }} dias</b>
+                        {% if h.ciclo_estimado > 0 %}
+                            <div style="font-size: 0.7rem;">
+                                {% if h.atrasada %}
+                                    <span style="color: #d32f2f; font-weight: bold;">⚠️ ATRASADA ({{ h.ciclo_estimado }}d)</span>
+                                {% elif h.dias_restantes <= 3 %}
+                                    <span style="color: #f39c12; font-weight: bold;">🔥 COLHER EM ~{{ h.dias_restantes }}d</span>
+                                {% else %}
+                                    <span style="color: #888;">Faltam ~{{ h.dias_restantes }}d</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% else %}<small style="color: #ccc;">Finalizado</small>{% endif %}
+                </td>
+                <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                    <span class="status-badge {{ 'status-colhido' if h.status == 'Colhido' else 'status-crescendo' }}">
+                        {% if h.status == 'Crescendo' %}
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 5px;"></i>
+                        {% elif h.status == 'Colhido' %}
+                            <i class="fas fa-check-circle" style="margin-right: 5px;"></i>
+                        {% endif %}
+                        {{ h.status }}
+                    </span>
+                </td>
+                <td style="padding: 15px; border-bottom: 1px solid #eee; text-align: center;">
+                    <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                        {% if h.status != 'Colhido' %}
+                        <form action="/colher/{{ h.id }}/{{ fazenda.id }}" method="POST" style="display: inline-flex; gap: 5px;">
+                            <input type="date" name="data_colheita" required style="padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.75rem;">
+                            <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.75rem;">OK</button>
+                        </form>
+                        {% endif %}
+                        <a href="/deletar/{{ h.id }}/{{ fazenda.id }}" style="color: var(--danger-red);"><i class="fas fa-trash-alt"></i></a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Gráfico de Variedades
+    new Chart(document.getElementById('varietyChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ chart_data.keys()|list|tojson }},
+            datasets: [{ 
+                data: {{ chart_data.values()|list|tojson }}, 
+                backgroundColor: ['#3A7B50','#F8A348','#2ECC71','#3498DB','#9B59B6'],
+                borderWidth: 1
+            }]
+        },
+        options: { 
+            plugins: { 
+                legend: { position: 'right', labels: { boxWidth: 10, font: { size: 9 } } },
+                title: { display: true, text: 'Variedades', font: { size: 11 } }
+            } 
+        }
+    });
+
+    // Gráfico Hídrico
+    {% if labels_h2o %}
+    new Chart(document.getElementById('waterChart'), {
+        type: 'line',
+        data: {
+            labels: {{ labels_h2o | tojson }},
+            datasets: [{
+                label: 'Litros',
+                data: {{ dados_h2o | tojson }},
+                borderColor: '#3498DB',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

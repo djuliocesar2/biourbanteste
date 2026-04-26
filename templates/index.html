@@ -39,6 +39,20 @@
         border: 1px solid #c084fc;
         box-shadow: 0 2px 4px rgba(109, 40, 217, 0.1);
     }
+
+    .filter-btn {
+        text-decoration: none;
+        padding: 6px 15px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: #666;
+        background: #f5f5f5;
+        transition: 0.3s;
+    }
+    .filter-btn.active {
+        background: var(--primary-green);
+        color: white;
+    }
 </style>
 
 <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
@@ -65,13 +79,13 @@
                 <span style="display: block; font-size: 1.8rem; font-weight: bold; color: var(--primary-green);">{{ stats.total_ativas }}</span>
             </div>
             <div style="background: #f8faf8; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee;">
-                <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Tempo Médio (Ciclo)</small>
+                <small style="color: #888; text-transform: uppercase; font-weight: 700; font-size: 0.65rem;">Tempo Médio Ciclo</small>
                 <span style="display: block; font-size: 1.8rem; font-weight: bold; color: #2C3E50;">{{ stats.tempo_medio }}d</span>
             </div>
         </div>
 
         <div style="background: white; border: 1px solid #eee; padding: 15px; border-radius: 12px; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <small style="color: #888; font-weight: 700; font-size: 0.65rem; margin-bottom: 10px; text-transform: uppercase;">Distribuição de Variedades</small>
+            <small style="color: #888; font-weight: 700; font-size: 0.65rem; margin-bottom: 10px; text-transform: uppercase;">Variedades Plantadas</small>
             <div style="width: 100%; max-width: 130px;">
                 <canvas id="varietyChart"></canvas>
             </div>
@@ -80,7 +94,7 @@
         <div style="display: flex; flex-direction: column; gap: 15px;">
             <div style="background: white; border-radius: 12px; border: 1px solid #eee; border-top: 4px solid #3498DB; padding: 15px; min-height: 180px;">
                 <h3 style="margin: 0 0 10px 0; font-size: 0.8rem; color: #2C3E50; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-tint" style="color: #3498DB;"></i> Histórico de Consumo (L)
+                    <i class="fas fa-tint" style="color: #3498DB;"></i> Consumo Hídrico (Litros)
                 </h3>
                 <div id="waterContainer" style="height: 120px; width: 100%;">
                     <canvas id="waterChart"></canvas>
@@ -97,39 +111,48 @@
                     <p style="margin: 0; font-size: 0.75rem; color: #444; line-height: 1.3;">{{ stats.insight_h2o.msg }}</p>
                 </div>
                 <i class="fas {% if stats.insight_h2o.tipo == 'perigo' %}fa-arrow-down{% elif stats.insight_h2o.tipo == 'alerta' %}fa-arrow-up{% else %}fa-check{% endif %}" 
-                   style="color: {% if stats.insight_h2o.tipo == 'perigo' %}#e74c3c{% elif stats.insight_h2o.tipo == 'alerta' %}#f1c40f{% else %}#2ecc71{% endif %}; font-size: 0.9rem;"></i>
+                   style="color: {% if stats.insight_h2o.tipo == 'perigo' %}#e74c3c{% elif stats.insight_h2o.tipo == 'alerta' %}#f1c40f{% else %}#2ecc71{% endif %};"></i>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <div style="background: #fdfdfd; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #f0f0f0;">
-        <h4 style="margin: 0 0 15px 0; font-size: 0.85rem; color: #444;">Novo Lote de Plantio</h4>
-        <form action="/add_hortalica/{{ fazenda.id }}" method="POST" style="display: flex; gap: 20px; align-items: flex-end;">
-            <div style="flex: 2;">
-                <label style="font-size: 0.75rem; color: #666; margin-bottom: 5px; display: block;">Espécie</label>
-                <input type="text" name="nome" placeholder="Ex: Tomate Cereja" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+    <div style="background: #fdfdfd; padding: 35px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #f0f0f0;">
+        <h4 style="margin: 0 0 15px 0; font-size: 0.85rem; color: #444;">Registrar Novo Lote de Plantio</h4>
+        <form action="/add_hortalica/{{ fazenda.id }}" method="POST" style="display: flex; gap: 35px; align-items: flex-end;">
+            <div style="flex: 2; margin-right: 5px;">
+                <label style="font-size: 0.75rem; color: #666; margin-bottom: 10px; display: block; font-weight: 600;">Espécie / Nome</label>
+                <input type="text" name="nome" placeholder="Ex: Alface Mimosa" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
             </div>
-            <div style="flex: 1;">
-                <label style="font-size: 0.75rem; color: #666; margin-bottom: 5px; display: block;">Data de Plantio</label>
-                <input type="date" name="data_plantio" required style="width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 8px;">
+            <div style="flex: 1.2; margin-right: 5px;">
+                <label style="font-size: 0.75rem; color: #666; margin-bottom: 10px; display: block; font-weight: 600;">Data de Plantio</label>
+                <input type="date" name="data_plantio" required style="width: 100%; padding: 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
             </div>
-            <div style="flex: 0.8;">
-                <label style="font-size: 0.75rem; color: #666; margin-bottom: 5px; display: block;">Ciclo Estimado (Dias)</label>
-                <input type="number" name="ciclo_estimado" placeholder="45" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <div style="flex: 1; margin-right: 5px;">
+                <label style="font-size: 0.75rem; color: #666; margin-bottom: 10px; display: block; font-weight: 600;">Ciclo Estimado (Dias)</label>
+                <input type="number" name="ciclo_estimado" placeholder="Ex: 30" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem;">
             </div>
-            <button type="submit" class="btn btn-primary" style="height: 40px; background: var(--primary-green); border: none; padding: 0 20px; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
-                <i class="fas fa-plus"></i> Adicionar
+            <button type="submit" style="height: 48px; background: var(--primary-green); border: none; padding: 0 25px; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-left: 5px;">
+                <i class="fas fa-plus"></i> Adicionar Lote
             </button>
         </form>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="font-size: 0.9rem; color: #444;">Monitoramento de Lotes</h3>
+        <div style="display: flex; gap: 8px;">
+            <a href="?filtro=Todos" class="filter-btn {{ 'active' if stats.filtro_atual == 'Todos' }}">Todos</a>
+            <a href="?filtro=Crescendo" class="filter-btn {{ 'active' if stats.filtro_atual == 'Crescendo' }}">Crescendo</a>
+            <a href="?filtro=Colhido" class="filter-btn {{ 'active' if stats.filtro_atual == 'Colhido' }}">Colhido</a>
+        </div>
     </div>
 
     <table style="width: 100%; border-collapse: collapse;">
         <thead>
             <tr style="text-align: left; background: #f8faf8; border-bottom: 2px solid #eee;">
-                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Hortaliça / Lote</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Lote / Início</th>
                 <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Ciclo / IA Preditiva</th>
-                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Status Atual</th>
+                <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase;">Estado Atual</th>
                 <th style="padding: 15px; color: #999; font-size: 0.7rem; text-transform: uppercase; text-align: center;">Ações</th>
             </tr>
         </thead>
@@ -150,7 +173,6 @@
                                 <span style="color: #7f8c8d;">Faltam {{ h.dias_restantes }} dias</span>
                             {% endif %}
                         </div>
-                        
                         {% if stats.previsoes.get(h.nome) %}
                         <div class="ia-badge">
                             <i class="fas fa-brain"></i> IA sugere: {{ stats.previsoes[h.nome] }} dias
@@ -173,12 +195,12 @@
                     {% if h.status != 'Colhido' %}
                     <form action="/colher/{{ h.id }}/{{ fazenda.id }}" method="POST" style="display: inline;">
                         <input type="hidden" name="data_colheita" value="{{ hoje }}">
-                        <button type="submit" title="Finalizar Colheita" style="border:none; background:none; color:var(--primary-green); cursor:pointer; font-size: 1.3rem; margin-right: 15px;">
+                        <button type="submit" title="Finalizar e Colher" style="border:none; background:none; color:var(--primary-green); cursor:pointer; font-size: 1.3rem; margin-right: 15px;">
                             <i class="fas fa-check-circle"></i>
                         </button>
                     </form>
                     {% endif %}
-                    <a href="/deletar/{{ h.id }}/{{ fazenda.id }}" onclick="return confirm('Excluir este lote permanentemente?')" style="color: #ec7063; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></a>
+                    <a href="/deletar/{{ h.id }}/{{ fazenda.id }}" onclick="return confirm('Excluir este lote?')" style="color: #ec7063; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></a>
                 </td>
             </tr>
             {% endfor %}
@@ -187,7 +209,6 @@
 </div>
 
 <script>
-    // Configuração do Gráfico de Variedades (Doughnut)
     new Chart(document.getElementById('varietyChart'), {
         type: 'doughnut',
         data: {
@@ -198,16 +219,11 @@
                 borderWidth: 0
             }]
         },
-        options: {
-            cutout: '75%',
-            plugins: { legend: { display: false } }
-        }
+        options: { cutout: '75%', plugins: { legend: { display: false } } }
     });
 
-    // Configuração do Gráfico de Consumo (Line)
     const ctxWater = document.getElementById('waterChart');
     const labelsH2O = {{ labels_h2o | tojson }};
-    
     if (labelsH2O.length > 0) {
         new Chart(ctxWater, {
             type: 'line',
@@ -235,7 +251,7 @@
             }
         });
     } else {
-        document.getElementById('waterContainer').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;font-size:0.75rem;">Aguardando dados dos sensores...</div>';
+        document.getElementById('waterContainer').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;font-size:0.75rem;">Aguardando dados hídricos...</div>';
     }
 </script>
 {% endblock %}

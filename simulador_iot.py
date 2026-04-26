@@ -42,8 +42,8 @@ def simular_envio():
             except requests.exceptions.ConnectionError:
                 print("Erro: Não foi possível conectar ao servidor. O app.py está rodando?")
             
-            # Espera 5 segundos para o próximo envio
-            time.sleep(5)
+            # ESPERA 1 MINUTO (60 SEGUNDOS) PARA O PRÓXIMO ENVIO
+            time.sleep(60)
             
     except KeyboardInterrupt:
         print("\n\nSimulação finalizada pelo usuário.")

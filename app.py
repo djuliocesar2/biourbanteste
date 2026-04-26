@@ -42,7 +42,7 @@ def login():
         if user and user.password == request.form.get('password'):
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('Login inválido')
+        flash('Login inválido. Verifique suas credenciais.')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -78,7 +78,7 @@ def add_fazenda():
         db.session.add(nova); db.session.commit()
     return redirect(url_for('dashboard'))
 
-# --- PÁGINA DA UNIDADE (GESTÃO + DUAS IAs) ---
+# --- PÁGINA DA UNIDADE (GESTÃO + DUAL IA) ---
 
 @app.route('/fazenda/<int:id>')
 @login_required
@@ -86,12 +86,14 @@ def ver_fazenda(id):
     fazenda = Fazenda.query.get_or_404(id)
     if fazenda.usuario_id != current_user.id: return "Acesso Negado", 403
     
+    # Filtro opcional via URL (?filtro=Crescendo)
+    filtro = request.args.get('filtro', 'Todos')
     hoje = datetime.now().date()
     contagem_variedades = {}
     total_ciclos, qtd_ativas = 0, 0
     previsoes_ia = {}
 
-    # 1. PROCESSAMENTO DE LOTES E ALERTAS DE ATRASO
+    # 1. PROCESSAMENTO DE LOTES E ALERTAS
     for h in fazenda.hortalicas:
         if h.status != 'Colhido':
             if h.ciclo_estimado:
@@ -125,36 +127,54 @@ def ver_fazenda(id):
                     previsoes_ia[tipo] = round(float(pred[0]), 1)
                 except: continue
 
-    # 3. IA PRESCRITIVA: ANÁLISE DE CONSUMO HÍDRICO (IoT)
+    # 3. IA PRESCRITIVA: ANÁLISE DINÂMICA DE CONSUMO (Gatilhos 1L e 2L)
     insight_h2o = None
-    registros = RegistroHidrico.query.filter_by(fazenda_id=id).order_by(RegistroHidrico.id.desc()).limit(7).all()
+    # Pegamos apenas os últimos 3 registros para a IA ser mais rápida na resposta
+    registros = RegistroHidrico.query.filter_by(fazenda_id=id).order_by(RegistroHidrico.id.desc()).limit(3).all()
+    
     if registros:
         media_local = sum(r.consumo_litros for r in registros) / len(registros)
-        if media_local > 10.0:
-            insight_h2o = {"tipo": "perigo", "msg": "Consumo elevado. Reduza a irrigação em 20% para evitar desperdício."}
-        elif media_local < 3.0:
-            insight_h2o = {"tipo": "alerta", "msg": "Fluxo baixo. Aumente a irrigação para garantir a hidratação das raízes."}
+        
+        if media_local < 1.0:
+            insight_h2o = {
+                "tipo": "alerta", 
+                "msg": f"Consumo baixo ({media_local:.2f}L). Aumente a irrigação para garantir a hidratação das raízes."
+            }
+        elif media_local > 2.0:
+            insight_h2o = {
+                "tipo": "perigo", 
+                "msg": f"Consumo elevado ({media_local:.2f}L). Reduza a irrigação para evitar desperdício e saturação."
+            }
         else:
-            insight_h2o = {"tipo": "sucesso", "msg": "Nível de irrigação ideal para esta unidade. Mantenha o fluxo."}
+            insight_h2o = {
+                "tipo": "sucesso", 
+                "msg": f"Nível de irrigação ideal ({media_local:.2f}L). Mantenha o fluxo atual para este cultivo."
+            }
 
-    # Preparação dos dados para os gráficos
+    # Gráficos e Estatísticas
     registros.reverse()
     labels_h2o = [r.data_leitura[8:10]+"/"+r.data_leitura[5:7] for r in registros]
     dados_h2o = [r.consumo_litros for r in registros]
     tempo_medio = round(total_ciclos / qtd_ativas, 1) if qtd_ativas > 0 else 0
 
+    # Lógica de Filtro para a Tabela
+    if filtro == 'Crescendo': hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status != 'Colhido']
+    elif filtro == 'Colhido': hortalicas_exibidas = [h for h in fazenda.hortalicas if h.status == 'Colhido']
+    else: hortalicas_exibidas = fazenda.hortalicas
+
     stats = {
         'total_ativas': qtd_ativas, 
         'tempo_medio': tempo_medio, 
         'previsoes': previsoes_ia,
-        'insight_h2o': insight_h2o
+        'insight_h2o': insight_h2o,
+        'filtro_atual': filtro
     }
     
-    return render_template('index.html', fazenda=fazenda, hortalicas=fazenda.hortalicas, 
+    return render_template('index.html', fazenda=fazenda, hortalicas=hortalicas_exibidas, 
                            stats=stats, chart_data=contagem_variedades, 
                            labels_h2o=labels_h2o, dados_h2o=dados_h2o, hoje=hoje)
 
-# --- OPERAÇÕES ---
+# --- OPERAÇÕES DE CRUD E API ---
 
 @app.route('/add_hortalica/<int:fazenda_id>', methods=['POST'])
 @login_required
@@ -192,9 +212,9 @@ def exportar_csv(fazenda_id):
     fazenda = Fazenda.query.get_or_404(fazenda_id)
     si = io.StringIO()
     cw = csv.writer(si)
-    cw.writerow(['Hortalica', 'Data Plantio', 'Data Colheita', 'Status'])
+    cw.writerow(['Hortalica', 'Data Plantio', 'Data Colheita', 'Status', 'Ciclo Estimado'])
     for h in fazenda.hortalicas:
-        cw.writerow([h.nome, h.data_plantio, h.data_colheita, h.status])
+        cw.writerow([h.nome, h.data_plantio, h.data_colheita, h.status, h.ciclo_estimado])
     output = make_response(si.getvalue())
     output.headers["Content-Disposition"] = f"attachment; filename=relatorio_{fazenda.nome}.csv"
     output.headers["Content-type"] = "text/csv"

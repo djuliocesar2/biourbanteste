@@ -3,12 +3,23 @@ import time
 import random
 from datetime import datetime
 
-# Configurações
+# Configurações base
 URL_API = "http://127.0.0.1:8080/api/sensor_hidrico"
-FAZENDA_ID = 1  # Verifique o ID da sua fazenda no banco
 
 def simular_envio():
-    print(f"--- Iniciando Simulação de Sensor IoT para Fazenda #{FAZENDA_ID} ---")
+    print("="*50)
+    print("      BIOURBAN - SIMULADOR DE SENSOR IOT")
+    print("="*50)
+    
+    # Solicita o ID da fazenda dinamicamente
+    try:
+        fazenda_id = int(input("Digite o ID da fazenda (veja na URL do navegador): "))
+    except ValueError:
+        print("Erro: O ID deve ser um número inteiro.")
+        return
+
+    print(f"\nConectando à API para a Fazenda #{fazenda_id}...")
+    print("Pressione CTRL+C para interromper a simulação.\n")
     
     try:
         while True:
@@ -17,21 +28,25 @@ def simular_envio():
             
             payload = {
                 "consumo": consumo_atual,
-                "fazenda_id": FAZENDA_ID
+                "fazenda_id": fazenda_id
             }
             
-            response = requests.post(URL_API, json=payload)
+            try:
+                response = requests.post(URL_API, json=payload)
+                
+                if response.status_code == 201:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Sucesso! Enviado: {consumo_atual}L")
+                else:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] Erro na API: Status {response.status_code}")
             
-            if response.status_code == 201:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] Sensor: {consumo_atual}L enviado com sucesso!")
-            else:
-                print(f"Erro ao enviar: {response.status_code}")
+            except requests.exceptions.ConnectionError:
+                print("Erro: Não foi possível conectar ao servidor. O app.py está rodando?")
             
-            # Espera 5 segundos para o próximo "envio"
+            # Espera 5 segundos para o próximo envio
             time.sleep(5)
             
     except KeyboardInterrupt:
-        print("\nSimulação finalizada pelo usuário.")
+        print("\n\nSimulação finalizada pelo usuário.")
 
 if __name__ == "__main__":
     simular_envio()

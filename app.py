@@ -24,14 +24,16 @@ def load_user(user_id):
 with app.app_context():
     db.create_all()
 
+# Filtro para calcular dias de cultivo no HTML
 @app.template_filter('dias_cultivo')
 def dias_cultivo_filter(data_plantio_str):
     try:
+        if not data_plantio_str: return 0
         data_plantio = datetime.strptime(data_plantio_str, '%Y-%m-%d').date()
         return (datetime.now().date() - data_plantio).days
     except: return 0
 
-# --- AUTENTICAÇÃO ---
+# --- ROTAS DE AUTENTICAÇÃO ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -47,20 +49,18 @@ def login():
 def register():
     if request.method == 'POST':
         username = request.form.get('username')
-        password = request.form.get('password')
         if not Usuario.query.filter_by(username=username).first():
-            novo = Usuario(username=username, password=password)
+            novo = Usuario(username=username, password=request.form.get('password'))
             db.session.add(novo); db.session.commit()
             return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/logout')
-@login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- DASHBOARD E UNIDADES ---
+# --- DASHBOARD (LISTA DE UNIDADES) ---
 
 @app.route('/', endpoint='dashboard')
 @login_required
@@ -78,47 +78,83 @@ def add_fazenda():
         db.session.add(nova); db.session.commit()
     return redirect(url_for('dashboard'))
 
+# --- PÁGINA DA UNIDADE (GESTÃO + DUAS IAs) ---
+
 @app.route('/fazenda/<int:id>')
 @login_required
 def ver_fazenda(id):
     fazenda = Fazenda.query.get_or_404(id)
     if fazenda.usuario_id != current_user.id: return "Acesso Negado", 403
     
-    filtro = request.args.get('filtro', 'Todos')
     hoje = datetime.now().date()
     contagem_variedades = {}
     total_ciclos, qtd_ativas = 0, 0
-    
+    previsoes_ia = {}
+
+    # 1. PROCESSAMENTO DE LOTES E ALERTAS DE ATRASO
     for h in fazenda.hortalicas:
         if h.status != 'Colhido':
             if h.ciclo_estimado:
                 total_ciclos += h.ciclo_estimado
                 qtd_ativas += 1
             contagem_variedades[h.nome] = contagem_variedades.get(h.nome, 0) + 1
-            
-            d_p = datetime.strptime(h.data_plantio, '%Y-%m-%d').date()
-            passados = (hoje - d_p).days
-            h.atrasada = passados > (h.ciclo_estimado or 0)
-            h.dias_restantes = max(0, (h.ciclo_estimado or 0) - passados)
+            try:
+                d_p = datetime.strptime(h.data_plantio, '%Y-%m-%d').date()
+                passados = (hoje - d_p).days
+                h.atrasada = passados > (h.ciclo_estimado or 0)
+                h.dias_restantes = max(0, (h.ciclo_estimado or 0) - passados)
+            except:
+                h.atrasada = False; h.dias_restantes = 0
 
-    tempo_medio = round(total_ciclos / qtd_ativas, 1) if qtd_ativas > 0 else 0
+    # 2. IA PREDITIVA: PREVISÃO DE COLHEITA (Regressão Linear)
+    historico = Hortalica.query.filter_by(fazenda_id=id, status='Colhido').all()
+    if len(historico) >= 2:
+        tipos_ativos = set([h.nome for h in fazenda.hortalicas if h.status != 'Colhido'])
+        for tipo in tipos_ativos:
+            dados_tipo = [h for h in historico if h.nome == tipo and h.data_plantio and h.data_colheita]
+            if len(dados_tipo) >= 2:
+                try:
+                    X = np.array(range(len(dados_tipo))).reshape(-1, 1)
+                    Y = []
+                    for h in dados_tipo:
+                        d_p = datetime.strptime(h.data_plantio, '%Y-%m-%d').date()
+                        d_c = datetime.strptime(h.data_colheita, '%Y-%m-%d').date()
+                        Y.append((d_c - d_p).days)
+                    model = LinearRegression().fit(X, Y)
+                    pred = model.predict([[len(dados_tipo)]])
+                    previsoes_ia[tipo] = round(float(pred[0]), 1)
+                except: continue
 
-    # Dados Sensores IoT
+    # 3. IA PRESCRITIVA: ANÁLISE DE CONSUMO HÍDRICO (IoT)
+    insight_h2o = None
     registros = RegistroHidrico.query.filter_by(fazenda_id=id).order_by(RegistroHidrico.id.desc()).limit(7).all()
+    if registros:
+        media_local = sum(r.consumo_litros for r in registros) / len(registros)
+        if media_local > 10.0:
+            insight_h2o = {"tipo": "perigo", "msg": "Consumo elevado. Reduza a irrigação em 20% para evitar desperdício."}
+        elif media_local < 3.0:
+            insight_h2o = {"tipo": "alerta", "msg": "Fluxo baixo. Aumente a irrigação para garantir a hidratação das raízes."}
+        else:
+            insight_h2o = {"tipo": "sucesso", "msg": "Nível de irrigação ideal para esta unidade. Mantenha o fluxo."}
+
+    # Preparação dos dados para os gráficos
     registros.reverse()
     labels_h2o = [r.data_leitura[8:10]+"/"+r.data_leitura[5:7] for r in registros]
     dados_h2o = [r.consumo_litros for r in registros]
+    tempo_medio = round(total_ciclos / qtd_ativas, 1) if qtd_ativas > 0 else 0
 
-    stats = {'total_ativas': qtd_ativas, 'tempo_medio': tempo_medio, 'filtro_atual': filtro}
+    stats = {
+        'total_ativas': qtd_ativas, 
+        'tempo_medio': tempo_medio, 
+        'previsoes': previsoes_ia,
+        'insight_h2o': insight_h2o
+    }
     
-    if filtro == 'Crescendo': exibidas = [h for h in fazenda.hortalicas if h.status != 'Colhido']
-    elif filtro == 'Colhido': exibidas = [h for h in fazenda.hortalicas if h.status == 'Colhido']
-    else: exibidas = fazenda.hortalicas
+    return render_template('index.html', fazenda=fazenda, hortalicas=fazenda.hortalicas, 
+                           stats=stats, chart_data=contagem_variedades, 
+                           labels_h2o=labels_h2o, dados_h2o=dados_h2o, hoje=hoje)
 
-    return render_template('index.html', fazenda=fazenda, hortalicas=exibidas, stats=stats, 
-                           chart_data=contagem_variedades, labels_h2o=labels_h2o, dados_h2o=dados_h2o)
-
-# --- OPERAÇÕES DE CULTIVO ---
+# --- OPERAÇÕES ---
 
 @app.route('/add_hortalica/<int:fazenda_id>', methods=['POST'])
 @login_required
@@ -136,7 +172,8 @@ def add_hortalica(fazenda_id):
 def colher(id, fazenda_id):
     h = Hortalica.query.get(id)
     if h:
-        h.data_colheita = request.form.get('data_colheita')
+        data_f = request.form.get('data_colheita')
+        h.data_colheita = data_f if data_f else datetime.now().strftime('%Y-%m-%d')
         h.status = "Colhido"
         db.session.commit()
     return redirect(url_for('ver_fazenda', id=fazenda_id))
@@ -144,10 +181,10 @@ def colher(id, fazenda_id):
 @app.route('/deletar/<int:id>/<int:fazenda_id>')
 @login_required
 def deletar(id, fazenda_id):
-    h = Hortalica.query.get(id); db.session.delete(h); db.session.commit()
+    h = Hortalica.query.get(id)
+    if h:
+        db.session.delete(h); db.session.commit()
     return redirect(url_for('ver_fazenda', id=fazenda_id))
-
-# --- EXPORTAÇÃO E INTELIGÊNCIA ---
 
 @app.route('/exportar_csv/<int:fazenda_id>')
 @login_required

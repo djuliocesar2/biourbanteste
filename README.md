@@ -1,71 +1,51 @@
-# 🌿 BioUrban - Sistema Inteligente de Monitoramento Hídrico
+# 🌿 BioUrban Pro - Sistema Inteligente de Monitoramento Agrícola e Gestão Hídrica IoT
 
-O **BioUrban** é uma plataforma de gestão para fazendas urbanas e unidades de cultivo inteligente desenvolvida para monitoramento hídrico eficiente. O projeto integra monitoramento em tempo real via sensores IoT, análise de ciclo de cultivo e ferramentas de exportação de dados para otimizar a produtividade agrícola urbana.
+O **BioUrban Pro** é uma plataforma web desenvolvida para monitoramento e gestão inteligente de fazendas urbanas e sistemas hidropônicos. O projeto combina **IoT (Internet das Coisas)** com **Inteligência Artificial Preditiva e Prescritiva** para otimizar o uso da água e prever prazos de colheita.
 
-## 🚀 Funcionalidades
+---
 
-- **Dashboard de Gestão:** Visualização consolidada de unidades ativas, métricas de cultivo e tempo médio.
-- **Monitoramento IoT:** Gráficos de consumo hídrico em tempo real alimentados via API.
-- **Gestão de Lotes:** Controle de plantio com indicadores de status (Crescendo/Colhido) e alertas visuais de atraso.
-- **Análise Visual:** Gráficos interativos (Chart.js) para distribuição de variedades e histórico de consumo.
-- **Relatórios:** Exportação do histórico completo de cultivos em formato CSV para análise externa.
-- **Segurança:** Sistema de autenticação de usuários para isolamento de dados por perfil.
+## 🚀 Tecnologias Utilizadas
 
-## 🛠️ Tecnologias Utilizadas
+- **Backend:** Python (Flask, Flask-SQLAlchemy, Flask-Login)
+- **Data Science & ML:** NumPy, SciPy, Scikit-learn (Regressão Linear)
+- **Frontend:** HTML5, CSS3, JavaScript, Chart.js, FontAwesome
+- **Banco de Dados:** SQLite
+- **IoT & Hardware:** ESP32, Sensor Capacitivo de Umidade do Solo, Display OLED SSD1306
 
-- **Linguagem:** Python 3.x
-- **Framework Web:** Flask
-- **Banco de Dados:** SQLite (SQLAlchemy)
-- **Frontend:** HTML5, CSS3 (Flexbox/Grid), JavaScript, Chart.js
-- **Simulação IoT:** Script Python (Requests)
+---
 
-## 🔧 Instalação e Execução
+## 🛠️ Passo a Passo para Instalação e Execução
 
-1. **Clone o repositório:**
-   ```bash
-   git clone [https://github.com/SEU_USUARIO/biourbanteste.git](https://github.com/SEU_USUARIO/biourbanteste.git)
-   cd biourban-main
-Crie e ative o ambiente virtual:
+Siga o roteiro de comandos abaixo no terminal para verificar seu ambiente, instalar as dependências necessárias e rodar a aplicação no seu computador.
 
-Bash
-python -m venv venv
-# No Windows:
-.\venv\Scripts\activate
-# No Linux/Mac:
-source venv/bin/activate
-Instale as dependências:
+### 1. Verificação do Ambiente Python e Pip
+
+Certifique-se de que o Python e o gerenciador de pacotes `pip` estão instalados corretamente:
+
+```bash
+python --version
+python -m pip --version
+2. Instalação das Dependências
+Instale as bibliotecas necessárias para a aplicação web, comunicação HTTP e modelos de aprendizado de máquina:
 
 Bash
-pip install flask flask-sqlalchemy flask-login requests
-Inicie o servidor:
+python -m pip install flask flask-sqlalchemy flask-login requests numpy scipy scikit-learn
+3. Validação do Ambiente Científico
+Verifique se os módulos de ciência de dados foram instalados e estão funcionais:
+
+Bash
+python -c "import numpy; print('NumPy:', numpy.__version__)"
+python -c "import scipy; print('SciPy:', scipy.__version__)"
+python -c "import sklearn; print('Scikit-learn:', sklearn.__version__)"
+python -c "import numpy; import scipy; from sklearn.linear_model import LinearRegression; print('OK - ambiente científico funcionando')"
+4. Execução da Aplicação
+Inicie o servidor local da aplicação Flask:
 
 Bash
 python app.py
-Acesse no navegador: http://127.0.0.1:8080
+Após executar o comando, o servidor estará ativo no seu navegador em: http://127.0.0.1:8080
 
-📡 Simulação de Sensores (IoT)
-Para validar o funcionamento dos gráficos de consumo:
+📡 Simulação e Integração IoT (ESP32)
+Simulador Virtual (Dashboard): Você pode ativar o simulador em segundo plano diretamente pela interface do painel clicando no botão Simulador: OFF/ON.
 
-Com o servidor app.py rodando, abra um novo terminal.
-
-Execute o simulador:
-
-Bash
-python simulador_iot.py
-Insira o ID da Fazenda (presente na URL do dashboard) para iniciar o fluxo de dados.
-
-📂 Estrutura de Arquivos
-app.py: Servidor principal e rotas da aplicação.
-
-models.py: Definição das classes e esquema do banco de dados.
-
-simulador_iot.py: Script para simular o envio de dados de sensores.
-
-templates/: Arquivos de interface (Jinja2).
-
-static/: Estilização e recursos visuais.
-
-✒️ Autores
-Julio Cesar - Desenvolvedor e Estudante de Ciência da Computação.
-Henrique Barros - Desenvolvedor e Estudante de Ciência da Computação.
-Igor Matos - Desenvolvedor e Estudante de Ciência da Computação..
+Sensor Físico ESP32: Ao conectar o microcontrolador ESP32 na mesma rede Wi-Fi, as leituras analógicas calibradas (0% a 100%) serão transmitidas via HTTP POST para a rota /api/sensor_hidrico e exibidas no gráfico do Sensor Físico.

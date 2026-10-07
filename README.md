@@ -4,13 +4,23 @@ O **BioUrban Pro** é uma plataforma web desenvolvida para monitoramento e gest�
 
 ---
 
+## 🚀 Principais Funcionalidades
+
+- **Monitoramento Dual (Virtual x Físico):** Alternância dinâmica entre um simulador IoT em segundo plano e a leitura em tempo real de sensores físicos conectados via USB/Serial (`COM3`) através de microcontroladores ESP32.
+- **Categorias Hídricas Inteligentes:** Configuração personalizada de limites de umidade com base na necessidade da espécie (*Hortaliças Comuns*, *Cactos e Suculentas*, e *Plantas Tropicais*).
+- **IA Prescritiva e Card Flutuante (Estilo Jogo):** Widget flutuante dinâmico no canto da tela que rotula e exibe dicas agronómicas inteligentes geradas por IA em tempo real.
+- **Predição de Colheita (Machine Learning):** Uso de Regressão Linear (`scikit-learn`) e `NumPy` para prever o tempo estimado de colheita com base no histórico de cultivo.
+- **Gestão Completa de Lotes (CRUD):** Registo, edição de parâmetros de cultivo, marcação de colheita e exportação de relatórios em formato CSV.
+
+---
+
 ## 🚀 Tecnologias Utilizadas
 
 - **Backend:** Python (Flask, Flask-SQLAlchemy, Flask-Login)
 - **Data Science & ML:** NumPy, SciPy, Scikit-learn (Regressão Linear)
-- **Frontend:** HTML5, CSS3, JavaScript, Chart.js, FontAwesome
-- **Banco de Dados:** SQLite
-- **IoT & Hardware:** ESP32, Sensor Capacitivo de Umidade do Solo, Display OLED SSD1306
+- **Frontend & UI:** HTML5, CSS3, JavaScript (AJAX), Chart.js, FontAwesome
+- **Banco de Dados:** SQLite (`biourban_pro.db`)
+- **IoT & Hardware:** ESP32, Sensor de Umidade do Solo, Comunicação Serial USB (`PySerial`)
 
 ---
 
